@@ -1,0 +1,57 @@
+{
+  "model_file": "models/xgb_tweedie_new_sku.joblib",
+  "model_type": "xgboost.XGBRegressor",
+  "library_versions": {
+    "xgboost": "3.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.1"
+  },
+  "source_notebook": "modeling/modeling_new_product.ipynb",
+  "task": "Predict totalItemsSold for a (sneakerName, buyerRegion) pair for a GENUINELY NEW product -- true cold start, not a restock of an existing SKU.",
+  "target_column": "totalItemsSold",
+  "features": [
+    { "name": "buyerRegion", "dtype": "category" },
+    { "name": "brand", "dtype": "category" },
+    { "name": "retailPrice", "dtype": "float" },
+    { "name": "releasedOnWeekend", "dtype": "int (0/1)" },
+    { "name": "releaseMonth", "dtype": "int (1-12)" },
+    { "name": "silhouette", "dtype": "category" },
+    { "name": "colorwayType", "dtype": "category" },
+    { "name": "historicalBrandRegionDemand", "dtype": "float" }
+  ],
+  "training_data": {
+    "source": "derive_new_product_features(df) applied to data/raw/StockX-Data-Contest-2019-3.csv",
+    "rows_total": 2550,
+    "grouping": "one row per (sneakerName, buyerRegion) -- full 50x51 grid, includes zero-transaction combos with totalItemsSold = 0",
+    "split_strategy": "GroupShuffleSplit on sneakerName, test_size=0.2, random_state=42 -- every region for a given sneaker stays entirely in train or entirely in test, so this tests generalization to a genuinely UNSEEN sneaker",
+    "rows_train": 2040,
+    "sneakers_train": 40,
+    "rows_test": 510,
+    "sneakers_test": 10
+  },
+  "hyperparameters": {
+    "objective": "reg:tweedie",
+    "tree_method": "hist",
+    "enable_categorical": true,
+    "learning_rate": 0.1,
+    "max_depth": 6,
+    "n_estimators": 300,
+    "reg_lambda": 1.0,
+    "tweedie_variance_power": 1.2,
+    "random_state": 42
+  },
+  "tuning": {
+    "method": "GridSearchCV with GroupKFold(5) respecting sneaker groups, scoring=neg_mean_absolute_error",
+    "best_cv_mae": 29.602204895019533
+  },
+  "test_metrics": {
+    "mae": 22.333,
+    "tweedie_deviance": 9.585,
+    "r2": 0.750
+  },
+  "notes": [
+    "Best-performing model of the five tried in modeling_new_product.ipynb (XGBoost-Poisson, XGBoost-Tweedie, CatBoost-Poisson, CatBoost-Tweedie, HistGradientBoosting-Poisson) on the genuine cold-start task.",
+    "sneakerName is deliberately excluded from features -- it won't exist for a real new product -- so generalization relies on brand/retailPrice/silhouette/colorwayType/historicalBrandRegionDemand instead.",
+    "Test metrics here are notably weaker than the existing-product models (hist_gradient_boosting_regressor_poisson, xgb__regressor_tweedie) because this is a genuinely harder task -- unseen sneakers, not just unseen (sneaker, region) combos of known sneakers."
+  ]
+}
